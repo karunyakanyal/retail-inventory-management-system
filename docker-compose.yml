@@ -1,0 +1,65 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: rims-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_pass}
+      MYSQL_DATABASE: ${DB_NAME:-rimsdb}
+      MYSQL_USER: ${DB_USER:-rims_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-rims_pass}
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-root_pass}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - rims-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: rims-backend
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-rimsdb}
+      DB_USER: ${DB_USER:-rims_user}
+      DB_PASSWORD: ${DB_PASSWORD:-rims_pass}
+      DB_URL: jdbc:mysql://mysql:3306/${DB_NAME:-rimsdb}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - rims-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: rims-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    depends_on:
+      - backend
+    networks:
+      - rims-network
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  rims-network:
+    driver: bridge

@@ -1,0 +1,101 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: rims-mysql-secret
+  namespace: rims
+type: Opaque
+stringData:
+  MYSQL_ROOT_PASSWORD: "root_pass_secure_123"
+  MYSQL_DATABASE: "rimsdb"
+  MYSQL_USER: "rims_user"
+  MYSQL_PASSWORD: "rims_pass_secure_123"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: rims-mysql-pvc
+  namespace: rims
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rims-mysql
+  namespace: rims
+  labels:
+    app: rims-mysql
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: rims-mysql
+  template:
+    metadata:
+      labels:
+        app: rims-mysql
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:8.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3306
+              name: mysql
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rims-mysql-secret
+                  key: MYSQL_ROOT_PASSWORD
+            - name: MYSQL_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: rims-mysql-secret
+                  key: MYSQL_DATABASE
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: rims-mysql-secret
+                  key: MYSQL_USER
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rims-mysql-secret
+                  key: MYSQL_PASSWORD
+          volumeMounts:
+            - name: mysql-storage
+              mountPath: /var/lib/mysql
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 500m
+              memory: 1024Mi
+      volumes:
+        - name: mysql-storage
+          persistentVolumeClaim:
+            claimName: rims-mysql-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  namespace: rims
+  labels:
+    app: rims-mysql
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3306
+      targetPort: 3306
+      name: mysql
+  selector:
+    app: rims-mysql
