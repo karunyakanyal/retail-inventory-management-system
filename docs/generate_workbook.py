@@ -17,16 +17,12 @@ def create_rims_workbook():
     gray_zebra = "F8FAFC"      # Alternating rows
     gray_border = "D1D5DB"     # Borders
     white = "FFFFFF"
-    green_tag = "059669"
-    red_tag = "DC2626"
 
     font_title = Font(name="Calibri", size=15, bold=True, color=white)
     font_section = Font(name="Calibri", size=12, bold=True, color=white)
     font_header = Font(name="Calibri", size=10, bold=True, color=white)
-    font_sub_header = Font(name="Calibri", size=10, bold=True, color="1E293B")
     font_bold = Font(name="Calibri", size=10, bold=True)
     font_regular = Font(name="Calibri", size=10)
-    font_italic = Font(name="Calibri", size=9, italic=True, color="64748B")
 
     fill_title = PatternFill(start_color=navy_dark, end_color=navy_dark, fill_type="solid")
     fill_section = PatternFill(start_color=blue_accent, end_color=blue_accent, fill_type="solid")
@@ -44,10 +40,10 @@ def create_rims_workbook():
     align_right = Alignment(horizontal="right", vertical="center")
     align_wrap_left = Alignment(horizontal="left", vertical="center", wrap_text=True)
 
-    def style_header_row(ws, row_idx, max_col):
+    def style_header_row(ws, row_idx, headers):
         ws.row_dimensions[row_idx].height = 26
-        for col_idx in range(1, max_col + 1):
-            cell = ws.cell(row=row_idx, column=col_idx)
+        for col_idx, h_text in enumerate(headers, start=1):
+            cell = ws.cell(row=row_idx, column=col_idx, value=h_text)
             cell.font = font_header
             cell.fill = fill_header
             cell.alignment = align_center
@@ -60,7 +56,6 @@ def create_rims_workbook():
             for cell in col:
                 val = cell.value
                 if val is not None:
-                    # Ignore formula string lengths or long merged title lengths
                     val_str = str(val)
                     if not val_str.startswith("="):
                         lines = val_str.split("\n")
@@ -156,13 +151,7 @@ def create_rims_workbook():
     ws1.row_dimensions[14].height = 24
 
     obj_headers = ["Ref ID", "Objective Area", "Target Metric", "Time Horizon", "Baseline", "Target Criteria", "Strategic Alignment"]
-    for c_i, h in enumerate(obj_headers, start=1):
-        cell = ws1.cell(row=15, column=c_i, value=h)
-        cell.font = font_header
-        cell.fill = fill_header
-        cell.alignment = align_center
-        cell.border = border_all
-    ws1.row_dimensions[15].height = 24
+    style_header_row(ws1, 15, obj_headers)
 
     smart_objectives = [
         ("OBJ-01", "Inventory Accuracy", "98% tracking accuracy", "6 months post-launch", "81.4%", "Audit reconciliation discrepancy <= 2.0%", "Operational Excellence"),
@@ -192,13 +181,7 @@ def create_rims_workbook():
     ws1.row_dimensions[22].height = 24
 
     sprint_headers = ["Sprint", "Epic / Module Focus", "Sprint Count", "Start Date", "End Date", "Target Milestone Deliverable", "Release Gate"]
-    for c_i, h in enumerate(sprint_headers, start=1):
-        cell = ws1.cell(row=23, column=c_i, value=h)
-        cell.font = font_header
-        cell.fill = fill_header
-        cell.alignment = align_center
-        cell.border = border_all
-    ws1.row_dimensions[23].height = 24
+    style_header_row(ws1, 23, sprint_headers)
 
     sprints_data = [
         ("Sprint 1", "Catalog", 1, "02-Nov-26", "13-Nov-26", "Product CRUD, Category entities, JPA repository layer", "Sprint Review 1"),
@@ -245,73 +228,65 @@ def create_rims_workbook():
     t2.alignment = align_center
     ws2.row_dimensions[1].height = 36
 
+    # Required exact headers: ID, Epic, User Story, Acceptance Criteria, BV, TC, RR, WSJF Numerator, Job Size, WSJF, Priority Rank, Status, Sprint
     backlog_headers = [
-        "Story ID", "Epic", "User Story Title / Description", "Acceptance Criteria",
-        "Business Value (BV)", "Time Criticality (TC)", "Risk Reduction / OE (RR)",
-        "Cost of Delay (CoD)", "Job Size", "WSJF Score", "Priority Rank", "Status", "Sprint"
+        "ID", "Epic", "User Story", "Acceptance Criteria",
+        "BV", "TC", "RR", "WSJF Numerator", "Job Size", "WSJF", "Priority Rank", "Status", "Sprint"
     ]
 
-    style_header_row(ws2, 3, len(backlog_headers))
+    style_header_row(ws2, 3, backlog_headers)
 
-    # 32 User Stories (No blank rows!)
-    # Including exact UST R1-R7 values from prompt:
-    # R1: Catalog BV5/TC4/RR4/size40
-    # R2: Inventory real-time view 4/5/5/80
-    # R3: Low-stock alerts 4/4/4/20
-    # R4: Order processing 5/5/3/60
-    # R5: Supplier/PO 4/3/4/40
-    # R6: Reporting 5/4/3/40
-    # R7: User mgmt 3/2/5/20
+    # All stories with Status = "Planned"
     backlog_stories = [
         # Core R1 - R7
-        ("UST-R01", "Catalog", "As a Catalog Manager, I want comprehensive product CRUD and multi-criteria search so that items are accurately categorized and discoverable.", "Given valid product attributes, when submitted, then persist with SKU and barcode; search by name, category, and price range.", 5, 4, 4, 40, "Done", "Sprint 1"),
-        ("UST-R02", "Inventory", "As an Inventory Analyst, I want a real-time multi-location stock view across warehouses and stores to maintain visibility of inventory on hand.", "Given location or product filter, when queried, then display real-time quantity on hand, reorder points, and safety stock.", 4, 5, 5, 80, "Done", "Sprint 3"),
-        ("UST-R03", "Inventory", "As a Store Manager, I want automated low-stock and stockout alerts so that stock replenishment can be triggered proactively before stockouts occur.", "Given stock qty <= reorder point, then flag as LOW_STOCK; when qty == 0, then flag as STOCKOUT on dashboard alerts.", 4, 4, 4, 20, "Done", "Sprint 5"),
-        ("UST-R04", "Orders", "As a Sales Fulfillment Lead, I want sales order creation and automated inventory allocation so that items are reserved without overselling.", "Given sufficient stock at specified location, when allocated, deduct available stock atomically; reject if insufficient.", 5, 5, 3, 60, "Done", "Sprint 6"),
-        ("UST-R05", "Supplier", "As a Purchasing Specialist, I want purchase order creation and goods receipt workflows so that warehouse stock is replenished on delivery.", "Given an approved PO, when goods are received at chosen warehouse, then update PO status to RECEIVED and credit stock levels.", 4, 3, 4, 40, "Done", "Sprint 8"),
-        ("UST-R06", "Reporting", "As an Executive, I want real-time KPI metrics and sales trend analytics so that inventory turnover and order fulfillment health are tracked.", "Given sales and inventory data, calculate total stock value, stockout count, fulfillment rate %, and daily sales trends.", 5, 4, 3, 40, "Done", "Sprint 11"),
-        ("UST-R07", "User Mgmt", "As a System Administrator, I want role-based access control and user administration so that only authorized personnel perform operations.", "Enforce HTTP Basic + BCrypt auth; ADMIN manages users; MANAGER+ manages catalog; STAFF transfers stock; VIEWER read-only.", 3, 2, 5, 20, "Done", "Sprint 13"),
+        ("UST-R01", "Catalog", "As a Catalog Manager, I want comprehensive product CRUD and multi-criteria search so that items are accurately categorized and discoverable.", "Given valid product attributes, when submitted, then persist with SKU and barcode; search by name, category, and price range.", 5, 4, 4, 40, "Planned", "Sprint 1"),
+        ("UST-R02", "Inventory", "As an Inventory Analyst, I want a real-time multi-location stock view across warehouses and stores to maintain visibility of inventory on hand.", "Given location or product filter, when queried, then display real-time quantity on hand, reorder points, and safety stock.", 4, 5, 5, 80, "Planned", "Sprint 3"),
+        ("UST-R03", "Inventory", "As a Store Manager, I want automated low-stock and stockout alerts so that stock replenishment can be triggered proactively before stockouts occur.", "Given stock qty <= reorder point, then flag as LOW_STOCK; when qty == 0, then flag as STOCKOUT on dashboard alerts.", 4, 4, 4, 20, "Planned", "Sprint 5"),
+        ("UST-R04", "Orders", "As a Sales Fulfillment Lead, I want sales order creation and automated inventory allocation so that items are reserved without overselling.", "Given sufficient stock at specified location, when allocated, deduct available stock atomically; reject if insufficient.", 5, 5, 3, 60, "Planned", "Sprint 6"),
+        ("UST-R05", "Supplier", "As a Purchasing Specialist, I want purchase order creation and goods receipt workflows so that warehouse stock is replenished on delivery.", "Given an approved PO, when goods are received at chosen warehouse, then update PO status to RECEIVED and credit stock levels.", 4, 3, 4, 40, "Planned", "Sprint 8"),
+        ("UST-R06", "Reporting", "As an Executive, I want real-time KPI metrics and sales trend analytics so that inventory turnover and order fulfillment health are tracked.", "Given sales and inventory data, calculate total stock value, stockout count, fulfillment rate %, and daily sales trends.", 5, 4, 3, 40, "Planned", "Sprint 11"),
+        ("UST-R07", "User Mgmt", "As a System Administrator, I want role-based access control and user administration so that only authorized personnel perform operations.", "Enforce HTTP Basic + BCrypt auth; ADMIN manages users; MANAGER+ manages catalog; STAFF transfers stock; VIEWER read-only.", 3, 2, 5, 20, "Planned", "Sprint 13"),
 
         # Epic 1: Catalog Extensions
-        ("UST-C01", "Catalog", "As a Catalog Specialist, I want category hierarchy management so that products are logically structured into departments and subcategories.", "Allow CRUD on categories; validate unique category names; prevent deletion of categories with active products.", 4, 3, 2, 20, "Done", "Sprint 1"),
-        ("UST-C02", "Catalog", "As a Merchandiser, I want bulk CSV import and export of product data so that seasonal catalog updates can be executed in bulk.", "Parse multipart CSV file; validate each row against schema; return imported record count and descriptive error log.", 4, 4, 3, 30, "Done", "Sprint 2"),
-        ("UST-C03", "Catalog", "As a Pricing Analyst, I want cost price and retail price maintenance so that gross margins can be tracked per product.", "Validate retail price > 0 and cost price >= 0; track price changes in audit log; reflect price updates across new orders.", 3, 3, 2, 20, "Done", "Sprint 2"),
+        ("UST-C01", "Catalog", "As a Catalog Specialist, I want category hierarchy management so that products are logically structured into departments and subcategories.", "Allow CRUD on categories; validate unique category names; prevent deletion of categories with active products.", 4, 3, 2, 20, "Planned", "Sprint 1"),
+        ("UST-C02", "Catalog", "As a Merchandiser, I want bulk CSV import and export of product data so that seasonal catalog updates can be executed in bulk.", "Parse multipart CSV file; validate each row against schema; return imported record count and descriptive error log.", 4, 4, 3, 30, "Planned", "Sprint 2"),
+        ("UST-C03", "Catalog", "As a Pricing Analyst, I want cost price and retail price maintenance so that gross margins can be tracked per product.", "Validate retail price > 0 and cost price >= 0; track price changes in audit log; reflect price updates across new orders.", 3, 3, 2, 20, "Planned", "Sprint 2"),
 
         # Epic 2: Inventory Extensions
-        ("UST-I01", "Inventory", "As a Logistics Manager, I want inter-facility stock transfer workflows so that inventory can move between warehouses and stores safely.", "Validate source has sufficient quantity; deduct source and increment destination atomically; record transfer history.", 5, 4, 4, 40, "Done", "Sprint 4"),
-        ("UST-I02", "Inventory", "As an Inventory Controller, I want stock level adjustment with mandatory reason codes so that physical audit variances are reconciled.", "Capture positive or negative quantity delta, location code, and reason string; persist audit log record for every adjustment.", 4, 4, 3, 30, "Done", "Sprint 4"),
-        ("UST-I03", "Inventory", "As a Warehouse Auditor, I want automated overstock identification so that excess carrying costs are flagged.", "Flag items where quantity on hand exceeds safety stock by 3x; highlight overstock count on KPI reporting dashboard.", 3, 3, 2, 20, "Done", "Sprint 5"),
+        ("UST-I01", "Inventory", "As a Logistics Manager, I want inter-facility stock transfer workflows so that inventory can move between warehouses and stores safely.", "Validate source has sufficient quantity; deduct source and increment destination atomically; record transfer history.", 5, 4, 4, 40, "Planned", "Sprint 4"),
+        ("UST-I02", "Inventory", "As an Inventory Controller, I want stock level adjustment with mandatory reason codes so that physical audit variances are reconciled.", "Capture positive or negative quantity delta, location code, and reason string; persist audit log record for every adjustment.", 4, 4, 3, 30, "Planned", "Sprint 4"),
+        ("UST-I03", "Inventory", "As a Warehouse Auditor, I want automated overstock identification so that excess carrying costs are flagged.", "Flag items where quantity on hand exceeds safety stock by 3x; highlight overstock count on KPI reporting dashboard.", 3, 3, 2, 20, "Planned", "Sprint 5"),
 
         # Epic 3: Orders Extensions
-        ("UST-O01", "Orders", "As a Warehouse Operator, I want order status progression (NEW -> ALLOCATED -> PICKED -> PACKED -> SHIPPED) so that fulfillment stages are tracked.", "Strict state machine validation; reject out-of-order transitions; record timestamp and user notes for each step.", 4, 4, 3, 30, "Done", "Sprint 7"),
-        ("UST-O02", "Orders", "As a Customer Care Representative, I want order cancellation functionality so that unfulfilled customer requests can be aborted cleanly.", "Allow cancellation only prior to SHIPPED status; release allocated stock back to available inventory; capture cancel reason.", 4, 3, 3, 20, "Done", "Sprint 7"),
-        ("UST-O03", "Orders", "As a Returns Clerk, I want return processing and automatic restocking so that returned goods are promptly available for resale.", "Process returns on SHIPPED/DELIVERED orders; credit returned items to specified warehouse location; record refund amount.", 4, 4, 4, 30, "Done", "Sprint 7"),
+        ("UST-O01", "Orders", "As a Warehouse Operator, I want order status progression (NEW -> ALLOCATED -> PICKED -> PACKED -> SHIPPED) so that fulfillment stages are tracked.", "Strict state machine validation; reject out-of-order transitions; record timestamp and user notes for each step.", 4, 4, 3, 30, "Planned", "Sprint 7"),
+        ("UST-O02", "Orders", "As a Customer Care Representative, I want order cancellation functionality so that unfulfilled customer requests can be aborted cleanly.", "Allow cancellation only prior to SHIPPED status; release allocated stock back to available inventory; capture cancel reason.", 4, 3, 3, 20, "Planned", "Sprint 7"),
+        ("UST-O03", "Orders", "As a Returns Clerk, I want return processing and automatic restocking so that returned goods are promptly available for resale.", "Process returns on SHIPPED/DELIVERED orders; credit returned items to specified warehouse location; record refund amount.", 4, 4, 4, 30, "Planned", "Sprint 7"),
 
         # Epic 4: Supplier Extensions
-        ("UST-S01", "Supplier", "As a Vendor Manager, I want supplier directory CRUD so that vendor contact and address information is maintained.", "Maintain supplier name, email, phone, contact person, city, state; validate unique supplier email addresses.", 3, 2, 3, 20, "Done", "Sprint 8"),
-        ("UST-S02", "Supplier", "As a Procurement Lead, I want supplier performance metrics so that vendor reliability and on-time delivery are evaluated.", "Calculate total POs, received POs, on-time delivery count, and on-time delivery percentage per supplier.", 4, 3, 3, 30, "Done", "Sprint 8"),
-        ("UST-S03", "Supplier", "As a Receiving Dock Supervisor, I want purchase order receiving with inspection notes so that damaged deliveries are noted.", "Record actual received date, receiving location, and inspection notes; trigger inventory level increase.", 4, 3, 3, 20, "Done", "Sprint 8"),
+        ("UST-S01", "Supplier", "As a Vendor Manager, I want supplier directory CRUD so that vendor contact and address information is maintained.", "Maintain supplier name, email, phone, contact person, city, state; validate unique supplier email addresses.", 3, 2, 3, 20, "Planned", "Sprint 8"),
+        ("UST-S02", "Supplier", "As a Procurement Lead, I want supplier performance metrics so that vendor reliability and on-time delivery are evaluated.", "Calculate total POs, received POs, on-time delivery count, and on-time delivery percentage per supplier.", 4, 3, 3, 30, "Planned", "Sprint 8"),
+        ("UST-S03", "Supplier", "As a Receiving Dock Supervisor, I want purchase order receiving with inspection notes so that damaged deliveries are noted.", "Record actual received date, receiving location, and inspection notes; trigger inventory level increase.", 4, 3, 3, 20, "Planned", "Sprint 8"),
 
         # Epic 5: Barcode & RFID
-        ("UST-B01", "Barcode/RFID", "As a Store Cashier, I want a unified scan endpoint (/api/scan/{code}) so that scanning either a barcode or RFID tag retrieves the product.", "Query product by barcode or rfidTag; return 200 with product details if found; return 404 with standard JSON if absent.", 5, 5, 4, 30, "Done", "Sprint 9"),
-        ("UST-B02", "Barcode/RFID", "As a Warehouse Picker, I want barcode scanner integration in the web UI so that items can be verified by handheld scanner input.", "Provide instant scan input field with auto-lookup; display matched item name, SKU, price, and category badge.", 4, 4, 3, 30, "Done", "Sprint 9"),
-        ("UST-B03", "Barcode/RFID", "As a Stock Auditor, I want RFID tag bulk reconciliation so that warehouse physical cycle counts take minutes instead of days.", "Support batch RFID scan uploads; compare scanned RFID tags against registered stock levels; report count variances.", 4, 4, 4, 40, "Done", "Sprint 10"),
+        ("UST-B01", "Barcode/RFID", "As a Store Cashier, I want a unified scan endpoint (/api/scan/{code}) so that scanning either a barcode or RFID tag retrieves the product.", "Query product by barcode or rfidTag; return 200 with product details if found; return 404 with standard JSON if absent.", 5, 5, 4, 30, "Planned", "Sprint 9"),
+        ("UST-B02", "Barcode/RFID", "As a Warehouse Picker, I want barcode scanner integration in the web UI so that items can be verified by handheld scanner input.", "Provide instant scan input field with auto-lookup; display matched item name, SKU, price, and category badge.", 4, 4, 3, 30, "Planned", "Sprint 9"),
+        ("UST-B03", "Barcode/RFID", "As a Stock Auditor, I want RFID tag bulk reconciliation so that warehouse physical cycle counts take minutes instead of days.", "Support batch RFID scan uploads; compare scanned RFID tags against registered stock levels; report count variances.", 4, 4, 4, 40, "Planned", "Sprint 10"),
 
         # Epic 6: Reporting Extensions
-        ("UST-P01", "Reporting", "As a CFO, I want total stock valuation calculated across all facilities so that asset balance sheets reflect real-time value.", "Aggregate sum of (qty * price) and sum of (qty * costPrice) across all active stock levels; expose via /api/reports/kpi.", 5, 4, 3, 30, "Done", "Sprint 11"),
-        ("UST-P02", "Reporting", "As a Sales Analyst, I want daily sales revenue and volume trend graphs so that sales spikes and slow periods are visible.", "Group completed orders by date; compute daily order count and revenue sum; render interactive Recharts dual-axis line chart.", 4, 4, 3, 30, "Done", "Sprint 12"),
-        ("UST-P03", "Reporting", "As a Compliance Officer, I want CSV export for inventory and orders so that periodic corporate audit files are archived.", "Generate RFC-4180 compliant CSV streams with Content-Disposition attachment headers for inventory and orders reports.", 4, 3, 3, 20, "Done", "Sprint 12"),
+        ("UST-P01", "Reporting", "As a CFO, I want total stock valuation calculated across all facilities so that asset balance sheets reflect real-time value.", "Aggregate sum of (qty * price) and sum of (qty * costPrice) across all active stock levels; expose via /api/reports/kpi.", 5, 4, 3, 30, "Planned", "Sprint 11"),
+        ("UST-P02", "Reporting", "As a Sales Analyst, I want daily sales revenue and volume trend graphs so that sales spikes and slow periods are visible.", "Group completed orders by date; compute daily order count and revenue sum; render interactive Recharts dual-axis line chart.", 4, 4, 3, 30, "Planned", "Sprint 12"),
+        ("UST-P03", "Reporting", "As a Compliance Officer, I want CSV export for inventory and orders so that periodic corporate audit files are archived.", "Generate RFC-4180 compliant CSV streams with Content-Disposition attachment headers for inventory and orders reports.", 4, 3, 3, 20, "Planned", "Sprint 12"),
 
         # Epic 7: User Mgmt Extensions
-        ("UST-U01", "User Mgmt", "As an IT Security Officer, I want user account deactivation so that offboarded employees immediately lose system access.", "Provide PATCH /api/users/{id}/deactivate; verify deactivated user credentials fail authentication with 401 Unauthorized.", 4, 3, 5, 20, "Done", "Sprint 13"),
-        ("UST-U02", "User Mgmt", "As an Administrator, I want dynamic role reassignment so that staff promotions or department transfers are updated instantly.", "Provide PATCH /api/users/{id}/role?role=ROLE_...; apply new authorities immediately on subsequent requests.", 3, 2, 4, 20, "Done", "Sprint 13"),
-        ("UST-U03", "User Mgmt", "As a Security Auditor, I want persistent audit logging for all mutations so that every write operation is traceable.", "Record principal username, action, entity type, entity ID, details, and timestamp into audit_logs table on every mutation.", 4, 3, 5, 30, "Done", "Sprint 13"),
+        ("UST-U01", "User Mgmt", "As an IT Security Officer, I want user account deactivation so that offboarded employees immediately lose system access.", "Provide PATCH /api/users/{id}/deactivate; verify deactivated user credentials fail authentication with 401 Unauthorized.", 4, 3, 5, 20, "Planned", "Sprint 13"),
+        ("UST-U02", "User Mgmt", "As an Administrator, I want dynamic role reassignment so that staff promotions or department transfers are updated instantly.", "Provide PATCH /api/users/{id}/role?role=ROLE_...; apply new authorities immediately on subsequent requests.", 3, 2, 4, 20, "Planned", "Sprint 13"),
+        ("UST-U03", "User Mgmt", "As a Security Auditor, I want persistent audit logging for all mutations so that every write operation is traceable.", "Record principal username, action, entity type, entity ID, details, and timestamp into audit_logs table on every mutation.", 4, 3, 5, 30, "Planned", "Sprint 13"),
 
         # Epic 8: ERP Integration
-        ("UST-E01", "ERP Integration", "As an Enterprise Architect, I want bidirectional ERP product export and import endpoints so that master catalog stays synchronized.", "Provide GET /api/erp/products/export and POST /api/erp/products/import supporting both JSON and CSV formats.", 4, 4, 4, 40, "Done", "Sprint 14"),
-        ("UST-E02", "ERP Integration", "As a Supply Chain Director, I want ERP inventory stock feeds so that external SAP/Oracle ERP reflects current warehouse levels.", "Provide GET /api/erp/stock/export and POST /api/erp/stock/import; validate location codes and adjust quantities safely.", 5, 4, 4, 40, "Done", "Sprint 14"),
-        ("UST-E03", "ERP Integration", "As an Omnichannel Lead, I want ERP sales order export and batch ingest so that cross-channel online orders are fulfilled.", "Provide GET /api/erp/orders/export and POST /api/erp/orders/import; validate order lines and auto-allocate stock.", 4, 4, 3, 40, "Done", "Sprint 15"),
-        ("UST-E04", "ERP Integration", "As a DevOps Engineer, I want end-to-end integration health monitoring so that ERP feed failures trigger immediate alerts.", "Expose Prometheus / Actuator health metrics for ERP connector queue depth and HTTP error rates.", 3, 3, 3, 20, "Done", "Sprint 15"),
+        ("UST-E01", "ERP Integration", "As an Enterprise Architect, I want bidirectional ERP product export and import endpoints so that master catalog stays synchronized.", "Provide GET /api/erp/products/export and POST /api/erp/products/import supporting both JSON and CSV formats.", 4, 4, 4, 40, "Planned", "Sprint 14"),
+        ("UST-E02", "ERP Integration", "As a Supply Chain Director, I want ERP inventory stock feeds so that external SAP/Oracle ERP reflects current warehouse levels.", "Provide GET /api/erp/stock/export and POST /api/erp/stock/import; validate location codes and adjust quantities safely.", 5, 4, 4, 40, "Planned", "Sprint 14"),
+        ("UST-E03", "ERP Integration", "As an Omnichannel Lead, I want ERP sales order export and batch ingest so that cross-channel online orders are fulfilled.", "Provide GET /api/erp/orders/export and POST /api/erp/orders/import; validate order lines and auto-allocate stock.", 4, 4, 3, 40, "Planned", "Sprint 15"),
+        ("UST-E04", "ERP Integration", "As a DevOps Engineer, I want end-to-end integration health monitoring so that ERP feed failures trigger immediate alerts.", "Expose Prometheus / Actuator health metrics for ERP connector queue depth and HTTP error rates.", 3, 3, 3, 20, "Planned", "Sprint 15"),
     ]
 
     start_row = 4
@@ -330,18 +305,19 @@ def create_rims_workbook():
         ws2.cell(row=r, column=6, value=tc).alignment = align_center
         ws2.cell(row=r, column=7, value=rr).alignment = align_center
 
-        # Cost of Delay Formula: =(E + F + G)
+        # WSJF Numerator Formula: =(E + F + G)
         ws2.cell(row=r, column=8, value=f"=E{r}+F{r}+G{r}").alignment = align_center
 
         ws2.cell(row=r, column=9, value=size).alignment = align_center
 
-        # WSJF Score Live Formula: =(E + F + G)/I
-        ws2.cell(row=r, column=10, value=f"=(E{r}+F{r}+G{r})/I{r}").alignment = align_center
+        # WSJF Score Live Formula: =(E + F + G)/I (or =H/I)
+        ws2.cell(row=r, column=10, value=f"=H{r}/I{r}").alignment = align_center
         ws2.cell(row=r, column=10).number_format = "0.00"
 
         # Priority Rank Live Formula: =RANK(J{r}, $J$4:$J${end_row})
         ws2.cell(row=r, column=11, value=f"=RANK(J{r}, $J${start_row}:$J${end_row})").alignment = align_center
 
+        # Status: "Planned"
         ws2.cell(row=r, column=12, value=status).alignment = align_center
         ws2.cell(row=r, column=13, value=sprint).alignment = align_center
 
@@ -383,10 +359,8 @@ def create_rims_workbook():
         "Epic Code", "Epic Name", "Simple Stories (Pts)", "Medium Stories (Pts)",
         "Complex Stories (Pts)", "Total Epic Points", "Sprints Allocated", "Avg Velocity Needed (Pts/Sp)"
     ]
-    style_header_row(ws3, 4, len(est_headers))
+    style_header_row(ws3, 4, est_headers)
 
-    # Prompts specific numbers:
-    # Catalog 80, Inventory 120, Orders 100, Supplier 90, Reporting 70, User Mgmt 40, plus Barcode/RFID and ERP Integration
     epics_est_data = [
         ("EPC-01", "Catalog", 20, 30, 30, 2),          # Total: 80
         ("EPC-02", "Inventory", 20, 50, 50, 3),        # Total: 120
@@ -452,13 +426,7 @@ def create_rims_workbook():
     ws3.row_dimensions[16].height = 24
 
     scale_headers = ["Point Value", "T-Shirt Size", "Typical Complexity", "Backend Effort (Days)", "Frontend Effort (Days)", "QA Test Cases", "Example Story Scope"]
-    ws3.row_dimensions[17].height = 22
-    for c_i, h in enumerate(scale_headers, start=1):
-        cell = ws3.cell(row=17, column=c_i, value=h)
-        cell.font = font_header
-        cell.fill = fill_header
-        cell.alignment = align_center
-        cell.border = border_all
+    style_header_row(ws3, 17, scale_headers)
 
     scale_data = [
         (1, "XS", "Trivial config/copy change", "< 0.5 day", "< 0.5 day", "1-2 cases", "Add a UI tooltip or error label"),
@@ -500,7 +468,7 @@ def create_rims_workbook():
         "Sprint", "Start Date", "End Date", "Planned Burn (Pts)", "Planned Remaining (Pts)",
         "Actual Burn (Pts)", "Actual Remaining (Pts)", "Variance (Pts)"
     ]
-    style_header_row(ws4, 3, len(bd_headers))
+    style_header_row(ws4, 3, bd_headers)
 
     # Baseline Row (Sprint 0)
     ws4.row_dimensions[4].height = 20
@@ -519,7 +487,8 @@ def create_rims_workbook():
         cell.fill = fill_highlight
         cell.border = border_all
 
-    # 15 Sprints Burndown Data
+    # Adjusted actual burns summing to exactly 640 (so sprint 15 ends at exactly 0):
+    # 42 + 40 + 38 + 44 + 42 + 48 + 52 + 88 + 32 + 30 + 34 + 36 + 40 + 38 + 36 = 640
     burndown_points = [
         ("Sprint 1", "02-Nov-26", "13-Nov-26", 40, 42),
         ("Sprint 2", "16-Nov-26", "27-Nov-26", 40, 40),
@@ -535,7 +504,7 @@ def create_rims_workbook():
         ("Sprint 12", "05-Apr-27", "16-Apr-27", 35, 36),
         ("Sprint 13", "19-Apr-27", "30-Apr-27", 40, 40),
         ("Sprint 14", "03-May-27", "14-May-27", 40, 38),
-        ("Sprint 15", "17-May-27", "28-May-27", 40, 46),
+        ("Sprint 15", "17-May-27", "28-May-27", 40, 36),
     ]
 
     for idx, (sp_name, s_date, e_date, p_burn, a_burn) in enumerate(burndown_points, start=5):
@@ -548,15 +517,15 @@ def create_rims_workbook():
         ws4.cell(row=r, column=3, value=e_date).alignment = align_center
         ws4.cell(row=r, column=4, value=p_burn).alignment = align_center
 
-        # Planned Remaining Formula =E{prev} - D{r}
-        ws4.cell(row=r, column=5, value=f"=E{prev_r}-D{r}").alignment = align_center
+        # Planned Remaining Formula =MAX(0, E{prev}-D{r})
+        ws4.cell(row=r, column=5, value=f"=MAX(0, E{prev_r}-D{r})").alignment = align_center
 
         ws4.cell(row=r, column=6, value=a_burn).alignment = align_center
 
-        # Actual Remaining Formula =G{prev} - F{r}
-        ws4.cell(row=r, column=7, value=f"=G{prev_r}-F{r}").alignment = align_center
+        # Actual Remaining Formula =MAX(0, G{prev}-F{r})
+        ws4.cell(row=r, column=7, value=f"=MAX(0, G{prev_r}-F{r})").alignment = align_center
 
-        # Variance Formula =G{r} - E{r} (negative means ahead of schedule!)
+        # Variance Formula =G{r} - E{r}
         ws4.cell(row=r, column=8, value=f"=G{r}-E{r}").alignment = align_center
 
         for c in range(1, 9):
@@ -575,19 +544,13 @@ def create_rims_workbook():
     chart.width = 18
     chart.height = 10
 
-    # Data series: columns E and G (Planned Remaining and Actual Remaining) rows 4 to 19
     data = Reference(ws4, min_col=5, min_row=3, max_col=7, max_row=19)
-    # Categories: column A (Sprint names) rows 4 to 19
     categories = Reference(ws4, min_col=1, min_row=4, max_row=19)
 
     chart.add_data(data, titles_from_data=True)
     chart.set_categories(categories)
 
-    # Remove the column F (Actual Burn) series if included; we want Planned Remaining (col 5) & Actual Remaining (col 7)
-    # In data range min_col=5 to max_col=7, col 5 is Planned Remaining, col 6 is Actual Burn, col 7 is Actual Remaining
-    # Let's clean chart series:
     if len(chart.series) >= 3:
-        # Keep series 0 (Planned Remaining) and series 2 (Actual Remaining), remove series 1 (Actual Burn)
         s_planned = chart.series[0]
         s_actual = chart.series[2]
         s_planned.graphicalProperties.line.solidFill = "3B82F6"  # Blue
@@ -616,9 +579,8 @@ def create_rims_workbook():
     ws5.row_dimensions[1].height = 36
 
     res_headers = ["Staff Name", "Role Category", "Specialization", "Base FTE"] + [f"Sp {i}" for i in range(1, 16)] + ["Avg Allocation"]
-    style_header_row(ws5, 3, len(res_headers))
+    style_header_row(ws5, 3, res_headers)
 
-    # Required roles: PM1, SM1, BA2, FE4, BE4, DBA2, DevOps2, QA3 = 19 people
     resources_data = [
         ("Manmeet Jalota", "PM", "Project Manager / Delivery Lead", 1.0),
         ("Priya Sharma", "SM", "Scrum Master / Agile Coach", 1.0),
@@ -649,10 +611,8 @@ def create_rims_workbook():
         ws5.cell(row=r, column=3, value=spec).alignment = align_left
         ws5.cell(row=r, column=4, value=fte).alignment = align_center
 
-        # Allocation per sprint (1.0 = 100%)
         for sp in range(1, 16):
             col_idx = 4 + sp
-            # Realistic allocations: mostly 1.0 (100%), with slight variations for DBA/DevOps
             alloc = 1.0
             if role == "DBA" and sp in [1, 2, 8, 14, 15]:
                 alloc = 1.0
@@ -667,7 +627,6 @@ def create_rims_workbook():
             cell.alignment = align_center
             cell.number_format = "0%"
 
-        # Average Allocation Formula =AVERAGE(E..S)
         avg_cell = ws5.cell(row=r, column=20, value=f"=AVERAGE(E{r}:S{r})")
         avg_cell.alignment = align_center
         avg_cell.number_format = "0.0%"
@@ -679,7 +638,6 @@ def create_rims_workbook():
             if idx % 2 == 1:
                 cell.fill = fill_zebra
 
-    # Resource Total Row
     tot_res_r = 4 + len(resources_data)
     ws5.row_dimensions[tot_res_r].height = 24
     ws5.cell(row=tot_res_r, column=1, value="TOTAL ALLOCATED FTE").alignment = align_left
@@ -730,7 +688,7 @@ def create_rims_workbook():
     ws6.row_dimensions[3].height = 24
 
     env_headers = ["Environment", "Purpose", "Hosting Infrastructure", "Database Tier", "Deployment Mechanism", "Access Control", "SLA Target"]
-    style_header_row(ws6, 4, len(env_headers))
+    style_header_row(ws6, 4, env_headers)
 
     env_data = [
         ("Local / Dev", "Daily development & feature prototyping", "Developer Workstations & Docker Compose", "H2 In-Memory / Local MySQL 8.0", "Local Spring Boot & Vite HMR", "Developers & QA", "Best Effort"),
@@ -759,7 +717,7 @@ def create_rims_workbook():
     ws6.row_dimensions[11].height = 24
 
     tool_headers = ["Tool Category", "Software / Service", "Version / Edition", "Primary Project Role", "Integration Interfaces", "Responsible Lead", "Status"]
-    style_header_row(ws6, 12, len(tool_headers))
+    style_header_row(ws6, 12, tool_headers)
 
     tools_data = [
         ("Project Tracking", "Jira Software Cloud", "Enterprise Cloud", "Agile backlog, Sprint planning, Burndown & Velocity", "GitHub PR links, Slack alerts", "Priya Sharma (SM)", "Active"),
@@ -799,7 +757,7 @@ def create_rims_workbook():
     ws7.row_dimensions[1].height = 36
 
     train_headers = ["Module ID", "Training Topic / Curriculum", "Target Audience", "Lead Trainer", "Delivery Mode", "Scheduled Date", "Duration", "Completion Status"]
-    style_header_row(ws7, 3, len(train_headers))
+    style_header_row(ws7, 3, train_headers)
 
     training_data = [
         ("TRN-001", "Agile Scrum Masterclass & Jira Sprint Ceremonies", "Entire Project Squad (19 members)", "Priya Sharma (SM)", "Virtual Workshop", "04-Nov-26", "8 hours", "Completed"),
@@ -845,9 +803,8 @@ def create_rims_workbook():
         "Impact (I: 1-5)", "Risk Score (P x I)", "Risk Severity Level",
         "Preventive Mitigation Strategy", "Contingency Action Plan", "Risk Owner", "Status"
     ]
-    style_header_row(ws8, 3, len(risk_headers))
+    style_header_row(ws8, 3, risk_headers)
 
-    # 10 comprehensive risks (prompt requires 8+)
     risks_data = [
         ("RSK-01", "Hardware", "Handheld RFID / Barcode scanner latency in warehouse aisles with metal shelving causing signal degradation.", 4, 4, "High", "Deploy industrial Wi-Fi 6 mesh repeaters in warehouses; implement offline scan caching on handheld clients.", "Switch to local batch buffer mode with delayed background upload sync.", "Karan Singhania", "Active Monitoring"),
         ("RSK-02", "Performance", "Database locking / deadlock contention during simultaneous order allocations across multiple concurrent stores.", 3, 5, "High", "Enforce short database transactions; implement optimistic locking with Spring @Version and indexed query lookups.", "Retry queue with exponential backoff on transient locking exceptions.", "Suresh Menon", "Mitigated"),
@@ -872,7 +829,6 @@ def create_rims_workbook():
         ws8.cell(row=r, column=4, value=prob).alignment = align_center
         ws8.cell(row=r, column=5, value=imp).alignment = align_center
 
-        # Formula: Score = Prob * Impact
         ws8.cell(row=r, column=6, value=f"=D{r}*E{r}").alignment = align_center
         ws8.cell(row=r, column=6).font = font_bold
 
@@ -910,11 +866,10 @@ def create_rims_workbook():
 
     opp_headers = [
         "Opp ID", "Opportunity Category", "Opportunity Description", "Potential Strategic Benefit",
-        "Feasibility (High/Med/Low)", "Impact Score (1-5)", "Action Plan & Next Steps", "Lead Champion", "Status"
+        "Feasibility", "Impact Score (1-5)", "Action Plan & Next Steps", "Lead Champion", "Status"
     ]
-    style_header_row(ws9, 3, len(opp_headers))
+    style_header_row(ws9, 3, opp_headers)
 
-    # 5 opportunities (prompt requires 4+)
     opportunities_data = [
         ("OPP-01", "AI & Predictive", "Implement ML-based predictive sales forecasting to automate dynamic safety stock calculations.", "Reduces overstock carrying costs by an estimated additional 12%; prevents regional holiday stockouts.", "Medium", 5, "Develop Python microservice container connecting to historical sales trends API; trial in Sprint 12.", "Vikram Rao", "Under Evaluation"),
         ("OPP-02", "Mobile PWA", "Package frontend as a Progressive Web App (PWA) with camera-based barcode scanning for store tablets.", "Eliminates need for $45,000 in dedicated barcode scanner hardware across small format retail stores.", "High", 4, "Integrate HTML5 Barcode Detection API into React frontend; test with store camera devices.", "Rahul Verma", "In Progress"),
@@ -958,9 +913,8 @@ def create_rims_workbook():
         "Defect ID", "Defect Title & Summary", "Associated Module", "Severity", "Priority",
         "Detected in Sprint", "Status", "Assigned Developer", "Root Cause Analysis", "Resolution Comments"
     ]
-    style_header_row(ws10, 3, len(defect_headers))
+    style_header_row(ws10, 3, defect_headers)
 
-    # 12 realistic defects (prompt requires 10+)
     defects_data = [
         ("DEF-001", "Duplicate SKU permitted when created without trimmed whitespace", "Catalog", "High", "P2", "Sprint 1", "Closed", "Pooja Desai", "String comparison in existsBySku did not trim leading/trailing spaces.", "Added @NotBlank and .trim() sanitization in ProductService.create()."),
         ("DEF-002", "Negative stock quantity allowed during manual inventory adjustment", "Inventory", "Critical", "P1", "Sprint 4", "Closed", "Neha Joshi", "Validation check for available stock balance was executed after subtraction.", "Added pre-adjustment guard throwing InsufficientStockException before commit."),
@@ -1009,9 +963,8 @@ def create_rims_workbook():
     ws11.row_dimensions[1].height = 36
 
     imp_headers = ["Impediment ID", "Impediment Description", "Impact on Sprint / Squad", "Raised Date", "Owner", "Resolution Steps & Outcome", "Resolved Date", "Status"]
-    style_header_row(ws11, 3, len(imp_headers))
+    style_header_row(ws11, 3, imp_headers)
 
-    # 6 impediments (prompt requires 5+)
     impediments_data = [
         ("IMP-01", "AWS EKS Sandbox cluster quota limit reached, preventing deployment of QA test pods.", "Blocked QA automated integration testing in Sprint 2 for 3 days.", "18-Nov-26", "Karan Singhania", "Submitted AWS enterprise support ticket to double vCPU quota; temporarily pruned unneeded preview containers.", "21-Nov-26", "Resolved"),
         ("IMP-02", "Delays in customs clearance for sample Honeywell handheld barcode/RFID scanner hardware.", "Delayed physical scanner validation tests planned for Sprint 9.", "15-Feb-27", "Manmeet Jalota", "Escalated to XYZ Retail procurement expediter; configured virtual hardware emulator software in the interim.", "20-Feb-27", "Resolved"),
@@ -1053,9 +1006,8 @@ def create_rims_workbook():
     ws12.row_dimensions[1].height = 36
 
     act_headers = ["Action ID", "Originating Forum / Event", "Action Item Description", "Action Owner", "Due Date", "Priority", "Status", "Resolution Notes"]
-    style_header_row(ws12, 3, len(act_headers))
+    style_header_row(ws12, 3, act_headers)
 
-    # 10 action items (prompt requires 8+)
     action_items_data = [
         ("ACT-001", "Sprint 1 Retrospective", "Standardize API response JSON error format across all REST controllers using GlobalExceptionHandler.", "Vikram Rao", "20-Nov-26", "High", "Completed", "Implemented unified ErrorResponse DTO with timestamp, status, error, and validationErrors map."),
         ("ACT-002", "Sprint 2 Retrospective", "Configure automated Maven pre-commit check for unit tests and code formatting to catch regressions early.", "Rajesh Nair", "04-Dec-26", "Medium", "Completed", "Configured git pre-commit hook running 'mvn test-compile' before commit push."),
@@ -1109,13 +1061,7 @@ def create_rims_workbook():
     ws13.row_dimensions[3].height = 24
 
     sci_crit_headers = ["Criterion ID", "Readiness Evaluation Criteria", "Weight Factor", "Scoring Rule (Yes/No)", "Definition of Ready Expectation"]
-    for c_i, h in enumerate(sci_crit_headers, start=1):
-        cell = ws13.cell(row=4, column=c_i, value=h)
-        cell.font = font_header
-        cell.fill = fill_header
-        cell.alignment = align_center
-        cell.border = border_all
-    ws13.row_dimensions[4].height = 22
+    style_header_row(ws13, 4, sci_crit_headers)
 
     criteria_list = [
         ("C1", "Business Value Clearly Articulated", 1.5, "1 if Yes, 0 if No", "Clear benefit statement explaining commercial or operational impact"),
@@ -1147,9 +1093,8 @@ def create_rims_workbook():
     ws13.row_dimensions[13].height = 24
 
     eval_headers = ["Story ID", "User Story Title", "C1 (w:1.5)", "C2 (w:1.0)", "C3 (w:2.0)", "C4 (w:1.5)", "C5 (w:1.5)", "C6 (w:1.0)", "C7 (w:1.5)", "Weighted Score", "Sprint Readiness Status"]
-    style_header_row(ws13, 14, len(eval_headers))
+    style_header_row(ws13, 14, eval_headers)
 
-    # Evaluate 8 core stories
     eval_stories = [
         ("UST-R01", "Product Catalog CRUD, Search & Pagination", 1, 1, 1, 1, 1, 1, 1),
         ("UST-R02", "Inventory Real-Time Multi-Location View", 1, 1, 1, 1, 1, 1, 1),
@@ -1174,12 +1119,10 @@ def create_rims_workbook():
         ws13.cell(row=r, column=8, value=c6).alignment = align_center
         ws13.cell(row=r, column=9, value=c7).alignment = align_center
 
-        # Weighted Total Formula: =C*1.5 + D*1.0 + E*2.0 + F*1.5 + G*1.5 + H*1.0 + I*1.5
         ws13.cell(row=r, column=10, value=f"=C{r}*1.5 + D{r}*1.0 + E{r}*2.0 + F{r}*1.5 + G{r}*1.5 + H{r}*1.0 + I{r}*1.5").alignment = align_center
         ws13.cell(row=r, column=10).number_format = "0.0"
         ws13.cell(row=r, column=10).font = font_bold
 
-        # Status Formula: =IF(J{r}>=8.0, "READY FOR SPRINT", "NEEDS REFINEMENT")
         ws13.cell(row=r, column=11, value=f'=IF(J{r}>=8.0, "READY FOR SPRINT", "NEEDS REFINEMENT")').alignment = align_center
 
         for c in range(1, 12):
@@ -1211,9 +1154,8 @@ def create_rims_workbook():
         "Metric ID", "Category Tier", "Metric Name", "Baseline", "Current Value",
         "Target Value", "Measurement Frequency", "Calculation Method / Formula", "Status Indicator"
     ]
-    style_header_row(ws14, 3, len(metrics_headers))
+    style_header_row(ws14, 3, metrics_headers)
 
-    # Realistic metrics across Strategic, Tactical, Operational
     metrics_data = [
         # Strategic Metrics
         ("MET-01", "Strategic", "Inventory Accuracy Rate", "81.4%", "97.8%", ">= 98.0%", "Monthly Cycle Count", "(Matched Items / Total Audited Items) x 100", "On Track"),
